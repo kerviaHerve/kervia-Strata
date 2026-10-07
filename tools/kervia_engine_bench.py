@@ -80,3 +80,23 @@ def siblings(base, record):
         value, content = measured_chat(base, a)
         record(dict(value, kind='sibling-a-return', repetition=repetition,
                     passed='ALPHA-573' in content and 'BETA-829' not in content))
+
+
+def main():
+    import argparse
+    import os
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--base-url', default='http://127.0.0.1:18080/v1')
+    parser.add_argument('--output', required=True)
+    args = parser.parse_args()
+    # Exclusive file creation prevents replacement of previous measurements.
+    with os.fdopen(os.open(args.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w') as out:
+        def record(value):
+            out.write(json.dumps(value) + '\n')
+            out.flush()
+        short_prefills(args.base_url, record)
+        siblings(args.base_url, record)
+
+
+if __name__ == '__main__':
+    main()
