@@ -19,7 +19,21 @@ python3 -m unittest discover -s tests/kervia -p 'test_*.py' -v
 python3 -m unittest tools.test_setup_config tools.test_setup_configs \
   tools.test_setup_parallel tools.test_setup_remote_opt tools.test_setup_golden
 python3 -m py_compile tools/kervia_profile.py tools/kervia_bench.py \
-  tools/kervia_metrics.py tools/kervia_validate.py tools/kervia_lifecycle.py
+  tools/kervia_metrics.py tools/kervia_validate.py tools/kervia_lifecycle.py \
+  tools/kervia_engine_bench.py tools/kervia_engine_report.py
+```
+
+For engine policy and conversation changes, run the seven standalone C++ tests
+without CUDA or model assets:
+
+```bash
+cmake -S . -B build-cpu -DSTRATA_ENABLE_CUDA=OFF \
+  -DSTRATA_BUILD_TESTS=OFF -DSTRATA_BUILD_CONVERSATION_TESTS=ON
+cmake --build build-cpu --parallel 2 --target conversation_prefix_test \
+  pipeline_policy_test conversation_cache_test conversation_split_failure_test \
+  conversation_memory_test conversation_file_test draft_policy_test
+ctest --test-dir build-cpu --output-on-failure \
+  -R '^(conversation_prefix_test|pipeline_policy_test|conversation_cache_test|conversation_split_failure_test|conversation_memory_test|conversation_file_test|draft_policy_test)$'
 ```
 
 Run additional relevant upstream tests when changing their code. CI is deliberately a CPU check, not a CUDA build or performance certification. Do not run untrusted pull requests on a production machine or expose credentials to a self-hosted GPU runner.
