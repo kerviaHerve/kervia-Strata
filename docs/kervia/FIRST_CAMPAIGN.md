@@ -45,4 +45,6 @@ Pending the measured runs. No performance gain or default-profile change is esta
 
 The pre-change 16 fork and 31 upstream CPU tests passed. New parser and validation checks cover counter denominators, privacy, repeated-input grouping, prefix-cache rejection and isolated generated-code execution. Record their actual final totals with the results. GPU checks are separate.
 
+Preparation correction: the first real long-fixture preflight exposed a missing optional `tokenizers` package. The fixture generator was changed to the exact tokenizer implementation used by Strata's server (`tools.strata_tokenizer`), avoiding a new installation and tokenizer differences. The failed preflight happened before any GPU experiment. A known-correct generated-code fixture was also executed successfully in the sandbox.
+
 Rollback: revert this campaign's helper/documentation commit on the development branch. Stop only the dedicated experiment service and restore the previously active local LLM service. The original model configuration and engine remain untouched; exact hashes are checked after the campaign.

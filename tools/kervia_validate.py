@@ -1,6 +1,6 @@
 """Synthetic functional/long-context gates for a separately started experiment server.
 
-Pillow and tokenizers are already supplied by the Strata server environment.
+Pillow and Strata's own tokenizer use the existing server environment.
 Generated Python executes in a networkless Bubblewrap sandbox, never on the host.
 """
 from __future__ import annotations
@@ -174,8 +174,13 @@ def vision_gate(base, model):
 
 
 def long_prompt(tokenizer_dir: Path, target: int):
-    from tokenizers import Tokenizer
-    tokenizer = Tokenizer.from_file(str(tokenizer_dir / 'tokenizer.json'))
+    from tools.strata_tokenizer import Tokenizer
+    vocab = json.loads((tokenizer_dir / 'vocab.json').read_text())
+    tokens = [None] * len(vocab)
+    for token, index in vocab.items():
+        tokens[index] = token
+    tokenizer = Tokenizer(tokens, (tokenizer_dir / 'merges.txt').read_text().split('\n'),
+                          json.loads((tokenizer_dir / 'token_type.json').read_text()))
     row = 'Synthetic ledger row: the amber module stores four stable values for a public test.\n'
     def build(repetitions):
         section = row * repetitions
@@ -184,10 +189,10 @@ def long_prompt(tokenizer_dir: Path, target: int):
                 + section + '\nLAST_CHECKPOINT: NUAGE-9053\n'
                 + '\nFirst print all three checkpoint codes in order. Then write a detailed 1200-word '
                 'tutorial about testing Python parsers, with code and edge cases. Do not stop after the codes.')
-    low, high = 0, target // max(1, 2 * len(tokenizer.encode(row).ids)) + 32
+    low, high = 0, target // max(1, 2 * len(tokenizer.encode(row))) + 32
     while low + 1 < high:
         middle = (low + high) // 2
-        if len(tokenizer.encode(build(middle)).ids) <= target:
+        if len(tokenizer.encode(build(middle))) <= target:
             low = middle
         else:
             high = middle
