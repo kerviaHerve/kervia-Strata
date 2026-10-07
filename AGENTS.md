@@ -30,4 +30,5 @@ offers the same steps as tools.
 - Keep production installations separate from this development checkout. A repository task does not authorize restarting a model service, replacing its config, downloading weights or occupying its GPUs.
 - Start with the CPU checks in `CONTRIBUTING.md`. They do not validate CUDA builds, GPU execution or performance.
 - Benchmark claims require identical public synthetic workloads and exact baseline/candidate revisions. Label the historical upstream baseline honestly; do not attribute it to fork optimizations.
+- Document every change using the required change record in `CONTRIBUTING.md`: evidence, exact change, reproduction, measured results or explicit untested status, decision and rollback. Never substitute an assumed gain for a target-hardware measurement.
 - Keep generated configs, credentials, private logs, prompts and model weights out of Git. Review sanitized summaries before publishing.

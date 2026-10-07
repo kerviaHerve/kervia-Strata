@@ -29,6 +29,20 @@ Follow [BENCHMARKING.md](docs/kervia/BENCHMARKING.md). Include hardware, both bu
 
 New experiments should be opt-in until verified. Preserve the OpenAI-compatible API, streaming, native vision, tools and the reference context capacity. Document rollback to the previous profile or engine.
 
+## Required change record
+
+Document every change in its PR or an accompanying versioned record. Keep the record proportional to the change, but never omit evidence or replace a measurement with an estimate of expected gains. Use these fields:
+
+- **Problem and evidence:** observable behavior, relevant source locations and measured baseline, or an explicit statement that it is not yet measured.
+- **Exact change:** parent and candidate revisions, changed files, effective parameters and reason for the change; distinguish upstream features from new fork work.
+- **Reproduction:** workload/fixture version, build and model revisions, environment, complete commands and cache/reset policy. Exclude credentials and private inputs.
+- **Results:** before/after runs, units and counter denominators, failures, memory costs, correctness checks and uncertainty. Label unrun tests and inconclusive results explicitly. Documentation-only changes do not require GPU benchmarks.
+- **Decision and rollback:** accepted/rejected/pending, reasons, known limits, and the exact previous revision/configuration to restore. Keep rejected experiments in the record.
+
+For an uncommitted local experiment, record the parent revision plus the patch SHA256 until the candidate commit exists. Review the diff and record which checks actually ran. Publishing a performance claim requires a reproducible comparison on the target hardware; a configuration option or source-code argument alone is not proof of a gain.
+
+The initial [optimization study](docs/kervia/OPTIMIZATION_STUDY.md) separates source evidence, historical measurements and experiments still to run.
+
 ## Private data and security
 
 Do not commit local run configurations, credentials, `.env` files, model weights, private prompts or raw host logs. Publish only reviewed synthetic fixtures and sanitized measurements. Use [private vulnerability reporting](https://github.com/kerviaHerve/kervia-Strata/security/advisories/new) for security bugs; see [SECURITY.md](SECURITY.md).
