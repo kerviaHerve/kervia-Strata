@@ -11,7 +11,7 @@ import urllib.error
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from tools.kervia_bench import endpoint, parse_stream, request
+from tools.kervia_bench import endpoint, parse_stream, request, summarize_runs
 
 
 def event(value):
@@ -42,6 +42,24 @@ def server(handler):
 
 
 class BenchmarkTests(unittest.TestCase):
+    def test_content_collection_is_opt_in_and_retains_finish_reason(self):
+        lines = stream()[:-1] + [event({'choices': [{'delta': {}, 'finish_reason': 'length'}]}), stream()[-1]]
+        result = parse_stream(lines, clock=iter([0., 2.]).__next__, collect_content=True)
+        self.assertEqual(result['content'], 'hello world')
+        self.assertEqual(result['finish_reason'], 'length')
+
+    def test_repetitions_are_grouped_by_input_not_pooled(self):
+        runs = [{'prompt_sha256': p, 'decode_tokens_per_second': rate,
+                 'total_seconds': 10., 'usage': {'completion_tokens': tokens}}
+                for p, rate, tokens in [('a', 100, 768), ('b', 20, 512), ('a', 120, 768)]]
+        summary = summarize_runs(runs)
+        self.assertEqual(summary['a']['median_decode_tokens_per_second'], 110)
+        self.assertEqual(summary['a']['repetitions'], 2)
+        self.assertEqual(summary['b']['output_token_counts'], [512])
+        runs[0]['usage']['prompt_tokens_details'] = {'cached_tokens': 64}
+        with self.assertRaises(ValueError):
+            summarize_runs(runs)
+
     def test_stream_rate_excludes_role_and_uses_first_content_even_at_zero(self):
         result = parse_stream(stream(), clock=iter([0.0, 2.0]).__next__)
         self.assertEqual(result['first'], 0.0)

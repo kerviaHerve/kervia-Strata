@@ -28,11 +28,17 @@ def set_option(args: list[str], name: str, value: str | None) -> list[str]:
 
 
 def apply_profile(config: dict, profile: dict, gpus: list[int], benchmark: bool = False,
-                  draft_vocab: str | None = None) -> dict:
+                  draft_vocab: str | None = None, layer_split: str | None = None) -> dict:
     if len(gpus) != 2 or len(set(gpus)) != 2 or any(type(x) is not int or x < 0 for x in gpus):
         raise ValueError('Choose exactly two distinct NVIDIA GPU indices.')
     if not isinstance(profile, dict) or profile.get('schema_version') != 1 or profile.get('gpu_count') != 2:
         raise ValueError('Unsupported profile schema.')
+    split = profile.get('layer_split', 'auto') if layer_split is None else layer_split
+    if split != 'auto':
+        if (type(split) not in (str, int) or not str(split).isascii() or not str(split).isdigit()
+                or not 2 <= int(split) < 48):
+            raise ValueError('Choose auto or a layer boundary from 2 to 47 for the 48-layer reference model.')
+        split = str(int(split))
     options = profile.get('engine_options')
     if (not isinstance(options, dict) or not options
             or any(not isinstance(k, str) or not k.startswith('--')
@@ -47,7 +53,8 @@ def apply_profile(config: dict, profile: dict, gpus: list[int], benchmark: bool 
     if not isinstance(args, list) or not all(isinstance(x, str) for x in args):
         raise ValueError('The source config must contain a string argument list.')
     if any(x.split('=', 1)[0] in ['--batch', '--batch-mtp', '--slots', '--pipeline-windows',
-                                 '--layer-split', '--split-device', '--split-skip-if-fits'] for x in args):
+                                 '--layer-split', '--split-device', '--split-skip-if-fits',
+                                 '--trim-stage-weights'] for x in args):
         raise ValueError('Remove explicit batch/pipeline/split engine overrides before using this single-client profile.')
     if ('--mtp' not in args or args.index('--mtp') + 1 == len(args)
             or args[args.index('--mtp') + 1].startswith('--')):
@@ -60,7 +67,7 @@ def apply_profile(config: dict, profile: dict, gpus: list[int], benchmark: bool 
             raise ValueError('Use separate flag and value arguments in the source config.')
         args = set_option(args, name, value)
     args = set_option(args, '--prompt-cache', '0' if benchmark else str(profile['conversation_checkpoints']))
-    result.update(args=args, gpu=gpus, gpus_asked=True, layer_split='auto', parallel=1,
+    result.update(args=args, gpu=gpus, gpus_asked=True, layer_split=split, parallel=1,
                   open_browser=False, model_name='kervia-strata')
     result.pop('split_skip_if_fits', None)
     # Do not silently enable a model-changing control vector inherited from a local config.
@@ -84,6 +91,7 @@ def main() -> None:
     parser.add_argument('--config', type=Path, required=True, help='Existing, prepared Strata run config')
     parser.add_argument('--profile', type=Path, default=DEFAULT_PROFILE)
     parser.add_argument('--gpus', default='0,1', help='Two nvidia-smi indices in stage order')
+    parser.add_argument('--layer-split', help='Override profile placement: auto or a boundary from 2 to 47')
     parser.add_argument('--draft-vocab', choices=['cjk', 'en', 'fr', 'cyrillic'],
                         help='Optional prepared draft vocabulary; otherwise preserve the existing choice')
     parser.add_argument('--benchmark', action='store_true', help='Disable prefix checkpoints for uncached measurements')
@@ -93,7 +101,7 @@ def main() -> None:
         gpus = [int(x) for x in opts.gpus.split(',')]
         config = json.loads(opts.config.read_text(encoding='utf-8'))
         profile = json.loads(opts.profile.read_text(encoding='utf-8'))
-        updated = apply_profile(config, profile, gpus, opts.benchmark, opts.draft_vocab)
+        updated = apply_profile(config, profile, gpus, opts.benchmark, opts.draft_vocab, opts.layer_split)
         if opts.output:
             write_config(opts.output, updated)
         print(f"{'Written' if opts.output else 'Dry run'}: two GPU stages {gpus}, "

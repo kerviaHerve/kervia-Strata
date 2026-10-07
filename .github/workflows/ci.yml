@@ -37,4 +37,6 @@ jobs:
           python -m unittest tools.test_setup_config tools.test_setup_configs
           tools.test_setup_parallel tools.test_setup_remote_opt tools.test_setup_golden
       - name: Compile helper modules
-        run: python -m py_compile tools/kervia_profile.py tools/kervia_bench.py
+        run: >-
+          python -m py_compile tools/kervia_profile.py tools/kervia_bench.py
+          tools/kervia_metrics.py tools/kervia_validate.py tools/kervia_lifecycle.py

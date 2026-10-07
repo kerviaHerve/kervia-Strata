@@ -4,13 +4,15 @@ The reference workload is a single coding agent with native vision, tool calls a
 
 ## 1. Establish comparable measurements
 
-The repository foundation includes the profile generator, a synthetic English decode client, CPU checks and a historical upstream baseline. Next, run the same public workload on upstream and fork builds; add reproducible long-context, native-image and tool-call fixtures. Keep model quality and memory costs visible alongside speed.
+The repository includes repeated public decode workloads, synthetic long-context/image/tool checks and CPU regression checks. The [first campaign](FIRST_CAMPAIGN.md) compares existing upstream configuration options using the same engine binary. Comparing a new fork-built engine with upstream remains future work. Keep model quality and memory costs visible alongside speed.
 
 Acceptance: exact revisions and commands, three or more decode runs, uncached 32K and near-128K probes, per-card VRAM and process RAM, plus functional results. No fork speedup is claimed until this comparison exists.
 
 ## 2. Measure placement and transfer costs
 
 Compare automatic placement with explicit layer boundaries on asymmetric PCIe links. Measure both GPU orders, per-stage time, host-to-device traffic and remote expert behavior. Identify the bottleneck before changing kernels or scheduling.
+
+First-campaign progress: automatic K=21 and explicit K=19/21/23/25/27/29 were measured in one GPU order, with stage trimming and two-window pipelining. A serial control matched the pipeline's observed expert-cache capacities. The other GPU order, full transfer traces and remote helpers remain untested.
 
 Acceptance: repeatable latency or throughput improvement across short and long prompts, without losing native vision, tool calls, context capacity or memory headroom. Keep a fallback to upstream automatic placement.
 
