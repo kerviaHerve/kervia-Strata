@@ -4,7 +4,7 @@ The reference workload is a single coding agent with native vision, tool calls a
 
 ## 1. Establish comparable measurements
 
-The repository includes repeated public decode workloads, synthetic long-context/image/tool checks and CPU regression checks. The [first campaign](FIRST_CAMPAIGN.md) compares existing upstream configuration options using the same engine binary. Comparing a new fork-built engine with upstream remains future work. Keep model quality and memory costs visible alongside speed.
+The repository includes repeated public decode workloads, synthetic long-context/image/tool checks and CPU regression checks. The [first campaign](FIRST_CAMPAIGN.md) compares existing upstream configuration options using the same engine binary. The [engine campaign](ENGINE_CAMPAIGN.md) separately compares fresh reference/fork builds and disabled/enabled options in the same fork binary. Keep model quality and memory costs visible alongside speed.
 
 Acceptance: exact revisions and commands, three or more decode runs, uncached 32K and near-128K probes, per-card VRAM and process RAM, plus functional results. No fork speedup is claimed until this comparison exists.
 
@@ -19,6 +19,11 @@ Acceptance: repeatable latency or throughput improvement across short and long p
 ## 3. Improve expert and KV allocation
 
 Investigate per-device cache allocation, prefill memory peaks, draft placement and KV residency under the measured topology. Evaluate longer conversations and context growth rather than a short-chat-only optimum. Experimental controls must remain opt-in until validated.
+
+The engine campaign implements split-device prefix borrowing with donor pinning,
+validation of every stage before writes, and bounded parked RAM. Its sequential
+sibling workload is an interleaving check; concurrent serving remains a separate
+roadmap item.
 
 Acceptance: no OOM in the published reference workloads, no hidden system-RAM or swap dependency, and no silent change to model behavior or quantization. Publish regressions and tradeoffs.
 

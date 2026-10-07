@@ -9,7 +9,7 @@ Strata's engine, multi-GPU support, OpenAI-compatible server, vision and tool ca
 
 ## Status and scope
 
-The fork adds two-GPU profiles, repeatable synthetic benchmarks, functional checks and documented measurements. The [first campaign](docs/kervia/FIRST_CAMPAIGN.md) identifies a faster opt-in configuration on the reference machine using **existing upstream options and the same upstream binary**. No CUDA kernel or engine change is claimed.
+The fork adds two-GPU profiles, repeatable synthetic benchmarks, functional checks and documented measurements. The [first campaign](docs/kervia/FIRST_CAMPAIGN.md) identifies a faster opt-in configuration on the reference machine using **existing upstream options and the same upstream binary**. A separate [engine campaign](docs/kervia/ENGINE_CAMPAIGN.md) tests four independently selectable engine changes, including shared-prefix borrowing across split GPUs. These require a fork-built engine and remain off by default.
 
 Our priorities are low latency for coding agents, efficient use of both cards, stable **131,072-token context**, native image input and reliable tool calls. Linux with two NVIDIA cards is the initial validation target. Existing upstream platforms remain in the source tree; they are not all validated by this fork's CI.
 
@@ -69,6 +69,15 @@ This creates a separate config; it does not switch a running service. Read the [
 ## Measurements
 
 The first campaign's final paired confirmation measured **22–26% higher per-prompt median decode rates** on three coding prompts and **14–27%** on three additional English/French prompts. Uncached first-token latency at 119,979 input tokens changed from **30.81 s to 24.48 s**. Each prompt had three 768-token outputs. These results compare configurations on one shared workstation; a resident embedding service occupied about 2 GB on GPU 0, and complete activity isolation was not established. See [all trials and limitations](docs/kervia/FIRST_CAMPAIGN.md). They must not be compared directly with the different historical workload below.
+
+The subsequent [engine campaign](docs/kervia/ENGINE_CAMPAIGN.md) measured an
+**80.7% reduction in first-token latency** when returning to a sibling conversation:
+**1.954 s → 0.378 s**, with 4,682 instead of 3,056 cached input tokens. This repeated
+synthetic result uses split-GPU prefix borrowing and the same 2 GiB parked-cache
+budget on both sides. It is not a general decode-rate gain or a direct Hermes/Privy
+client benchmark. The other three engine experiments remain unpromoted; all four
+flags are off by default. The record includes build identities, failures, memory
+costs, functional checks and rollback.
 
 Historical measurements on the reference machine, **before any fork changes**, used three 768-token outputs and uncached synthetic French prompts:
 

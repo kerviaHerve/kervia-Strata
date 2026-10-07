@@ -27,6 +27,13 @@ The standard-library client sends one warmup followed by three complete replays 
 
 The [first campaign](FIRST_CAMPAIGN.md) establishes this new baseline and measures upstream configuration options on the reference machine. Its [sanitized results](../../bench/results/kervia/2026-10-07-first-campaign.json) include every completed trial, a separate confirmation workload, functional checks and sampled resource usage. These are measurements with an unchanged upstream binary; they do not establish a new fork engine's speed.
 
+The separate [engine campaign](ENGINE_CAMPAIGN.md) compares freshly built reference
+and fork binaries at the same already optimized settings, plus independently
+disabled/enabled engine flags. It records four experiments, 14 definitive sessions,
+excluded exploratory runs, matched request digests and a repeated sibling-cache
+latency result. Its bounded RAM cache, diagnostic settings and synthetic workload
+differ from the first campaign; use its own controls when assessing engine gains.
+
 The rate estimate is `(completion_tokens - 1) / (last_content_time - first_content_time)`. SSE buffering, grouped token delivery and speculative decoding affect this client estimate. Use engine timing as a separately labeled cross-check. Role-only chunks do not count as first content. Missing token usage, truncated streams and intervals too short to measure cause failure. Early EOS is reported and makes unequal output lengths a comparison limitation.
 
 An API key can be provided through `STRATA_API_KEY`; it is never printed or stored in results. The default client accepts loopback URLs only, rejects embedded URL credentials and follows no HTTP redirects. Testing a remote server requires `--allow-remote` and an appropriate protected network path. Result files are created exclusively with mode 0600. Their default names are ignored by Git; review any summary before publishing it.
