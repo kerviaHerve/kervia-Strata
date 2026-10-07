@@ -26,7 +26,7 @@ public:
     static constexpr int kMaxT = 8;
     static constexpr int kBuckets = 4;
 
-    explicit DraftPolicy(int max_t, double margin = 0.03);
+    explicit DraftPolicy(int max_t, double margin = 0.03, bool reprobe = true);
 
     struct Pick {
         bool lookup = false;
@@ -53,6 +53,7 @@ private:
     double mtp_tokens(int t) const;
     void observe_cost(int t, double round_ms);
 
+    bool reprobe_;
     int max_t_;
     double margin_;
     std::array<double, kMaxT + 1> cost_{}, cost_n_{};      // round ms by window size

@@ -212,7 +212,14 @@ inline int ring_slots(size_t T) {
 }
 // The staging buffers a layout holds: the ring, and at least STAGE_GRP for the staged walk's grouped gather.  Counted
 // and taken through this one place, so the bytes the prompt path borrows cover every buffer it writes.
-inline int stage_slots(size_t T) { return std::max(ring_slots(T), STAGE_GRP); }
+inline bool short_group_gather() {
+    static const bool enabled = [] {
+        const char* v = std::getenv("STRATA_SHORT_GROUP_GATHER");
+        return v && std::atoi(v) != 0;
+    }();
+    return enabled;
+}
+inline int stage_slots(size_t T) { return short_group_gather() ? std::max(ring_slots(T), STAGE_GRP) : ring_slots(T); }
 constexpr int DQ = 2;              // dequantized-expert ring (FP16 gate/up + down)
 // The BF16-weight projections (hyper-connection, SSM alpha/beta, indexer, router, shared gate, PLE key/value) take
 // BF16 activations here and FP32 ones in decode. STRATA_PREFILL_BF16X2=1 adds each activation's BF16 remainder as a
@@ -2910,7 +2917,7 @@ bool Prefill::run_impl(const int64_t* tokens, int64_t n, int64_t pos0, std::stri
                         // then STAGE_GRP slots, two groups, and it stages no further ahead than the open group allows,
                         // so a group's staged slots stay unread-over until its flush (one wait on the last copy, one
                         // event releasing them all, as in the streamed walk).
-                        const bool group_resident = group_env && !stream_all && use_mmq && lay.native &&
+                        const bool group_resident = short_group_gather() && group_env && !stream_all && use_mmq && lay.native &&
                                                     MMQ_GROUP <= mmq::kGatherGroupMax;
                         const bool gg_now = group_gather || group_resident;
                         const int stage_n = group_resident ? STAGE_GRP : STAGE;

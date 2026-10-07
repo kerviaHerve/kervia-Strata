@@ -290,6 +290,23 @@ void full_session(int fmt, int mode, int experts) {
         split_image.stage_images.push_back(stage);
         check(!conversation_snapshot_validate(split_image,ss,g,draft.state,err),
               "a layer split's image is refused by the whole-session form");
+        const auto original_split = split_image;
+        check(conversation_snapshot_restore_prefix(split_image, 3, ss, g, (const QsaState*)nullptr, err) ==
+              ConversationRestore::restored, "stage-local prefix API restores stage zero of a split image");
+        ConversationKv stage_prefix;
+        check(conversation_kv_save(stage_prefix, main.state, g, 3, true, err), "capture restored stage prefix");
+        bool same_prefix = true;
+        stage_prefix.k.visit(0, stage_prefix.k.size(), [&](const uint8_t* data, size_t bytes, size_t offset) {
+            std::vector<uint8_t> expected(bytes);
+            if (!original_split.kv[0].k.read(expected.data(), offset, bytes) ||
+                !std::equal(expected.begin(), expected.end(), data)) same_prefix = false;
+            return true;
+        });
+        check(same_prefix && equal(original_split.kv[0], split_image.kv[0]) &&
+              equal(original_split.stage_images[0].kv[0], split_image.stage_images[0].kv[0]),
+              "stage prefix is exact and both donor stage images stay unchanged");
+        check(conversation_snapshot_restore_prefix(split_image, 3, ss, g, draft.state, err) ==
+              ConversationRestore::invalid, "single-session prefix API still rejects split image");
         ConversationKvReuse wrong{a.kv,65,65,{}};
         check(!conversation_snapshot_capture_bytes(wrong,view,ss,g,nullptr,peak,err),"a draft image's K/V is not a stage's reuse");
     }

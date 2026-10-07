@@ -22,8 +22,8 @@ constexpr int kProbes = 3;       // a lookup window size is tried this often bef
 
 }  // namespace
 
-DraftPolicy::DraftPolicy(int max_t, double margin)
-    : max_t_(std::clamp(max_t, 1, kMaxT)), margin_(margin) {}
+DraftPolicy::DraftPolicy(int max_t, double margin, bool reprobe)
+    : reprobe_(reprobe), max_t_(std::clamp(max_t, 1, kMaxT)), margin_(margin) {}
 
 int DraftPolicy::bucket(int match) {
     return match < 6 ? 0 : match < 12 ? 1 : match < 24 ? 2 : 3;
@@ -77,7 +77,7 @@ DraftPolicy::Pick DraftPolicy::choose(int t_mtp, int lookup_k, int match) const 
     // Even a measured cost can be stale after a slow start. Retry the full window occasionally, including when a
     // smaller lookup already pays; otherwise that smaller window can keep the full size from ever being measured.
     if (t_full > p.t && q >= 0.85 &&
-        ((!p.lookup && cost_n_[t_full] < kProbes) || cost_age_[t_full] >= kReprobeRounds)) {
+        ((!p.lookup && cost_n_[t_full] < kProbes) || (reprobe_ && cost_age_[t_full] >= kReprobeRounds))) {
         p.lookup = true;
         p.t = t_full;
     }
@@ -88,10 +88,10 @@ void DraftPolicy::observe_cost(int t, double round_ms) {
     if (!(round_ms > 0)) return;
     // A stale estimate must not outweigh its first fresh measurement: otherwise infrequent probes can take
     // hundreds of rounds to undo a few expensive startup samples. Keep the sample count (and startup probe budget).
-    cost_[t] = cost_n_[t] > 0 && cost_age_[t] < kReprobeRounds
+    cost_[t] = cost_n_[t] > 0 && (!reprobe_ || cost_age_[t] < kReprobeRounds)
                    ? (1.0 - kCostAlpha) * cost_[t] + kCostAlpha * round_ms : round_ms;
     cost_n_[t] += 1.0;
-    for (int& age : cost_age_) age = std::min(age + 1, kReprobeRounds);
+    if (reprobe_) for (int& age : cost_age_) age = std::min(age + 1, kReprobeRounds);
     cost_age_[t] = 0;
 }
 
@@ -134,7 +134,7 @@ int DraftPolicy::chain(int t_mtp, double p_mtp, int k_avail, int match) const {
     // As choose(): probe guessed costs, and occasionally retry stale costs even when a shorter chain pays.
     const int t_full = t_mtp + kmax;
     if (kmax > picked && p_mtp * c >= 0.6 &&
-        ((picked == 0 && cost_n_[t_full] < kProbes) || cost_age_[t_full] >= kReprobeRounds)) return kmax;
+        ((picked == 0 && cost_n_[t_full] < kProbes) || (reprobe_ && cost_age_[t_full] >= kReprobeRounds))) return kmax;
     return picked;
 }
 

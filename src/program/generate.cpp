@@ -60,6 +60,8 @@
 #include "strata/program/conv_cache.hpp"
 #include "strata/program/message_boundary.hpp"
 #include "strata/spec/draft_policy.hpp"
+#include "strata/spec/pipeline_policy.hpp"
+#include "strata/core/conversation_prefix.hpp"
 #include "strata/spec/draft_source.hpp"
 #include "strata/spec/suffix_drafter.hpp"
 #include "strata/kernels/cvec.hpp"
@@ -112,6 +114,11 @@
 #include <vector>
 
 namespace {
+// Fork experiments remain off unless explicitly enabled for a measured run.
+bool experiment_enabled(const char* name) {
+    const char* value = std::getenv(name);
+    return value && std::strcmp(value, "1") == 0;
+}
 // Windows' WDDM driver model: native Windows, or WSL2 (its GPU goes through /dev/dxg to the Windows driver).  There,
 // pinning a large arena into two CUDA contexts leaves WDDM refusing every later allocation (the 5080 + 3090 rig);
 // a Linux driver has no such limit (#253: the 8 GiB cap cost a 4090 + 3060 split 3x of its prompt speed).
@@ -7238,7 +7245,7 @@ int main(int argc, char** argv) {
         // --pipeline-windows 2 loads the drafter with 8 rows: the serial loop's chain keeps its own length
         else if (use_mtp && mtp.max_t() > S_mtp) mtp.set_max_drafts(S_mtp - 1);
         strata::spec::SuffixDrafter sfx(std::max(1, o.suffix_draft), 64, (size_t) o.max_context + 4096);
-        strata::spec::DraftPolicy policy(S);   // MTP or lookup window, learned over the whole process
+        strata::spec::DraftPolicy policy(S, 0.03, experiment_enabled("STRATA_LOOKUP_REPROBE"));   // MTP or lookup window, learned over the whole process
         // The vision path (--vision): GENI <max_new> <embeddings file> <id,id,...> carries images.  The file is one
         // or more strata-vision records (int32 'SVE1', n, nx, ny, n_embd, then n x n_embd floats) in prompt order;
         // each image's rows go to its run of <|image_pad|> tokens, whose M-RoPE positions are mtmd's: t = p,
@@ -8257,9 +8264,9 @@ int main(int argc, char** argv) {
             // A checkpoint inside ANOTHER parked conversation (a sibling subagent's system prompt and tools, say) is
             // borrowed: its K/V up to there and the checkpoint come over, and that conversation stays parked for its
             // own next turn (ConversationCache::borrows).  Everything else is taken whole, as before.
-            // (a layer split restores whole stage images only, so it never borrows; a batch slot that holds a longer
-            // start of this prompt wins as before)
-            bool borrow = stages.empty() && parked.tokens > std::max(resume, slot_tokens) &&
+            // Opt-in for both single and split devices; batch slots with a longer prefix still win.
+            bool borrow = experiment_enabled("STRATA_CONVERSATION_BORROW") &&
+                          parked.tokens > std::max(resume, slot_tokens) &&
                           conversations.borrows(parked);
             if (parked.tokens > std::max(resume, slot_tokens) && !borrow)
                 incoming.emplace(conversations.take(parked.index));
@@ -8287,11 +8294,16 @@ int main(int argc, char** argv) {
                 incoming.reset();
                 err.clear();
             }
+            std::vector<ConvCheckpoint> borrowed_checks;
             if (borrow) {
                 const strata::core::SavedConversation* donor = conversations.find(parked.serial);
-                if (donor == nullptr ||
-                    !strata::core::conversation_snapshot_validate(*donor, ss, g, use_mtp ? &mtp.kv_state() : nullptr,
-                                                                  err)) {
+                auto validate_part = [&](size_t k, const strata::core::SavedConversation& part) {
+                    const strata::core::OnDevice on(k == 0 ? 0 : stages[k - 1]->dev);
+                    return strata::core::conversation_snapshot_validate(part, k == 0 ? ss : stages[k - 1]->ss, g,
+                        use_mtp && k == stages.size() ? &mtp.kv_state() : nullptr, err);
+                };
+                if (donor == nullptr || !strata::core::conversation_prefix_prepare(*donor, parked.tokens, stages.size(),
+                        validate_part, borrowed_checks, err)) {
                     std::fprintf(stderr, "strata serve: conversation cache: cannot borrow from a parked conversation "
                                          "(%s)\n", err.empty() ? "gone" : err.c_str());
                     borrow = false;
@@ -8373,18 +8385,23 @@ int main(int argc, char** argv) {
                 const strata::core::SavedConversation* donor = conversations.find(parked.serial);   // still parked
                 if (donor == nullptr ||
                     strata::core::conversation_snapshot_restore_prefix(*donor, parked.tokens, ss, g,
-                                                                       use_mtp ? &mtp.kv_state() : nullptr, err) !=
+                                                                       use_mtp && stages.empty() ? &mtp.kv_state() : nullptr, err) !=
                         strata::core::ConversationRestore::restored) {
                     // validated above and pinned while parking: a failure here is fatal, as for a whole restore
                     std::printf("ERR restoring a borrowed conversation prefix: %s\n",
                                 err.empty() ? "gone" : err.c_str());
                     return 1;
                 }
-                // the donor's checkpoints on this prompt's path, copied: the donor keeps its own (the one at
-                // parked.tokens is mounted below, as for any checkpoint resume)
-                checks.clear();
-                for (const ConvCheckpoint& c : donor->checkpoints)
-                    if ((int64_t) c.ids.size() <= parked.tokens && starts_with(c.ids, c.imgs)) checks.push_back(c);
+                for (size_t i = 0; i < stages.size(); ++i) {
+                    const strata::core::OnDevice on(stages[i]->dev);
+                    if (strata::core::conversation_snapshot_restore_prefix(donor->stage_images[i], parked.tokens,
+                            stages[i]->ss, g, use_mtp && i + 1 == stages.size() ? &mtp.kv_state() : nullptr, err) !=
+                            strata::core::ConversationRestore::restored || cudaDeviceSynchronize() != cudaSuccess) {
+                        std::printf("ERR restoring borrowed conversation stage CUDA%d: %s\n", stages[i]->dev, err.c_str());
+                        return 1;  // never continue from a partially written split session
+                    }
+                }
+                checks = std::move(borrowed_checks);   // donor's checkpoints and KV remain owned by the cache
                 for (const ConvCheckpoint& c : checks)
                     if ((int64_t) c.ids.size() == parked.tokens) { live = c.ids; live_imgs = c.imgs; }
                 cvec_cached = donor->cvec;
@@ -9150,11 +9167,18 @@ int main(int argc, char** argv) {
                     bool made = false;     // made from a chain (its outcome can be scored even when the gate held it)
                     bool sfx = false;      // a lookup window (the suffix drafter's drafts)
                     int sfx_match = 0;
+                    Clock::time_point started0{}, started1{};
                 };
                 auto V0 = [&](const PW& w) -> strata::core::Verifier& { return *PV[0][w.seq & 1]; };
                 auto V1 = [&](const PW& w) -> strata::core::Verifier& { return *PV[1][w.seq & 1]; };
                 auto SDf = [&](const PW& w) { return (void*) PSD[w.seq & 1]; };
                 const float theta = pl_theta;
+                const bool adaptive_gate = experiment_enabled("STRATA_PIPELINE_ADAPTIVE_GATE");
+                strata::spec::PipelinePolicy launch_policy;
+                auto gate = [&](const PW& parent, const PW& next) {
+                    return adaptive_gate ? launch_policy.launch(next.p_on, parent.T, next.T, theta)
+                                         : next.p_on >= theta;
+                };
                 const int force_miss = pl_force_miss;
                 static const bool pl_log = pipe_dbg_env("STRATA_PIPELINE_LOG") != nullptr;
                 const int dev0 = PV[0][0]->device();
@@ -9229,6 +9253,8 @@ int main(int argc, char** argv) {
                     if (v.done(err)) {
                         if (!v.pl_finish(nullptr, err)) return false;
                         w.finished = true;
+                        if (adaptive_gate && !(doomed && &w == &D))
+                            launch_policy.stage(0, w.T, std::chrono::duration<double, std::milli>(Clock::now() - w.started0).count());
                         tre("F0", w.seq, w.T, w.spec);
                     }
                     return err.empty();
@@ -9417,6 +9443,8 @@ int main(int argc, char** argv) {
                         if (v.done(err)) {
                             if (!v.pl_finish(outp.data(), err)) return die(err);
                             A.s1_done = true;
+                            if (adaptive_gate)
+                                launch_policy.stage(1, A.T, std::chrono::duration<double, std::milli>(Clock::now() - A.started1).count());
                             tre("F1", A.seq, A.T);
                         } else if (!err.empty()) return die(err);
                     }
@@ -9506,7 +9534,7 @@ int main(int argc, char** argv) {
                                 // stage B now (its PLE rows from the tokens before it as they will be once A is
                                 // committed whole), so its launch behind A is only the graph launch (never while a
                                 // rollback is pending: B's verifier is the one the undo commit reads)
-                                if (B.ready && B.p_on >= theta && pl_prestage && !V0(B).in_flight() && !doomed) {
+                                if (B.ready && gate(A, B) && pl_prestage && !V0(B).in_flight() && !doomed) {
                                     int32_t prev[2] = {ss.ple_prev[0], ss.ple_prev[1]};
                                     for (int i = 0; i < A.T; ++i) { prev[0] = prev[1]; prev[1] = A.tok[i]; }
                                     if (!V0(B).prestage(B.T, B.tok, B.p, prev, err)) return die(err);
@@ -9526,11 +9554,12 @@ int main(int argc, char** argv) {
                         if (!snap_take(A.seq)) return die("the GDN snapshot failed");
                         if (!V0(A).pl_launch(A.T, A.tok, A.p, err)) return die(err);
                         A.launched = true;
+                        if (adaptive_gate) A.started0 = Clock::now();
                         tre("L0", A.seq, A.T, 0);
                     }
                     // ---- stage 0: B, speculatively, right behind A
                     if (B.ready && !B.launched && A.finished && !A.committed && !doomed) {
-                        if (B.p_on >= theta && B.p + B.T <= o.max_context) {
+                        if (gate(A, B) && B.p + B.T <= o.max_context) {
                             {
                                 const strata::core::OnDevice on(dev0);
                                 if (pl_snap_overlap ? cudaStreamWaitEvent(s0, pl_snap_ev[A.seq & 1], 0) != cudaSuccess
@@ -9545,6 +9574,7 @@ int main(int argc, char** argv) {
                                 return die(err.empty() ? std::string("the GDN snapshot failed") : err);
                             A.committed = true;
                             B.launched = true;
+                            if (adaptive_gate) B.started0 = Clock::now();
                             B.spec = true;
                             tre("L0", B.seq, B.T, 1);
                             ++pl_spec;
@@ -9558,6 +9588,7 @@ int main(int argc, char** argv) {
                         if (chain_kind == 1 && !B.ready) ++pl_late;   // stage 0 idles until the chain has B
                         if (!V1(A).pl_launch(A.T, A.tok, A.p, err)) return die(err);
                         A.s1 = true;
+                        if (adaptive_gate) A.started1 = Clock::now();
                         tre("L1", A.seq, A.T);
                     }
                     // ---- A's verdict
@@ -9596,6 +9627,7 @@ int main(int argc, char** argv) {
                         const int bin = std::min(9, std::max(0, (int) (B.p_on * 10.0f)));
                         cal_n[bin] += 1;
                         cal_on[bin] += would ? 1 : 0;
+                        if (adaptive_gate) launch_policy.outcome(B.p_on, would);
                     }
                     tre("V", A.seq, a, on ? 1 : (B.launched ? -1 : 0));
                     {
@@ -9671,6 +9703,7 @@ int main(int argc, char** argv) {
                         std::fclose(f);
                     }
                 }
+                if (adaptive_gate) std::fprintf(stderr, "strata pipeline adaptive: scored=%d\n", launch_policy.observations());
                 // the odd windows' counters and GPU profiles into the verifiers that report them
                 PV[0][0]->absorb_stats(*PV[0][1]);
                 PV[1][0]->absorb_stats(*PV[1][1]);
@@ -10738,7 +10771,7 @@ int main(int argc, char** argv) {
         const int S_mtp = o.mtp_max_t > 0 ? std::min(o.mtp_max_t, o.spec) : o.spec;
         if (use_mtp && S_mtp < o.spec) mtp.set_max_drafts(S_mtp - 1);
         strata::spec::SuffixDrafter sfx(std::max(1, o.suffix_draft), 64, (size_t) o.max_context + 4096);
-        strata::spec::DraftPolicy policy(o.spec);   // MTP or lookup window (see draft_policy.hpp)
+        strata::spec::DraftPolicy policy(o.spec, 0.03, experiment_enabled("STRATA_LOOKUP_REPROBE"));   // MTP or lookup window (see draft_policy.hpp)
         std::vector<int32_t> sbuf((size_t) o.spec, 0);
         int64_t sfx_windows = 0, sfx_drafts = 0, sfx_ok = 0;
         int64_t chain_windows = 0, chain_drafts = 0, chain_ok = 0;   // --lookup-chain's own counts

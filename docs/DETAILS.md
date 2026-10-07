@@ -753,7 +753,8 @@ buffer (and at most 16 MiB), which the budget counts like the rest of the snapsh
 Rewinds refresh the affected pages, and running state and
 checkpoints are captured again. Retained active K/V counts against the same byte
 budget and is discarded before evicting parked entries under memory pressure.
-Oldest parked entries are evicted first. A new conversation that starts with a
+Oldest parked entries are evicted first. With the fork experiment
+`STRATA_CONVERSATION_BORROW=1` (off by default), a new conversation that starts with a
 checkpoint inside a parked one (subagents that share a system prompt and tool
 list, a compacted history) restores that prefix and leaves the parked
 conversation where it is, so its next turn still resumes in full; the engine

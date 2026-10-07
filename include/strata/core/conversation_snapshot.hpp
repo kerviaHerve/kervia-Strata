@@ -109,7 +109,7 @@ ConversationRestore conversation_snapshot_restore_prefix(const SavedConversation
                                                           const QsaState& draft, std::string& error);
 
 // The same with `draft == nullptr`: an image WITHOUT the draft layer's K/V (kv holds the session's own QSA layers
-// only).  A layer split's later stages park this way; the draft ring is saved once, with the first stage's image.
+// only).  A split's draft ring is saved once, with the last stage's image.
 // An image is validated and restored with the same kind of call it was saved with (a K/V layer count mismatch is
 // rejected as invalid).
 bool conversation_snapshot_bytes(const ConversationView& view, const SessionState& session, const ModelGeometry& g,
@@ -124,6 +124,7 @@ bool conversation_snapshot_validate(const SavedConversation& image, const Sessio
                                     const ModelGeometry& g, const QsaState* draft, std::string& error);
 ConversationRestore conversation_snapshot_restore(const SavedConversation& image, SessionState& session,
                                                    const ModelGeometry& g, const QsaState* draft, std::string& error);
+// Stage-local form: the caller must validate ALL stage images/checkpoints before restoring the first.
 ConversationRestore conversation_snapshot_restore_prefix(const SavedConversation& image, int64_t upto,
                                                           SessionState& session, const ModelGeometry& g,
                                                           const QsaState* draft, std::string& error);
