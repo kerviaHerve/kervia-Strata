@@ -61,3 +61,11 @@ build-vision-cuda12.bat
 
 /.ccache/
 /.rocm-win/
+
+# Fork helpers: local settings, credentials and raw measurements
+.env
+.env.*
+!.env.example
+*.local.json
+benchmark.local*
+/results-local/

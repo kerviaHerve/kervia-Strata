@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-07",
+  "status": "historical upstream baseline; measured before fork changes",
+  "upstream_revision": "82f46a8c8f475f001ad76d92f58f4a4f8ffb0253",
+  "upstream_tag": "v0.1.40.1",
+  "strata_engine_version": "0.1.40",
+  "hardware": {
+    "gpus": [
+      {
+        "model": "NVIDIA RTX 5070 Ti",
+        "vram_gb": 16,
+        "pcie": "5.0 x8"
+      },
+      {
+        "model": "NVIDIA RTX 5070 Ti",
+        "vram_gb": 16,
+        "pcie": "5.0 x4"
+      }
+    ],
+    "nvlink": false,
+    "cpu": "AMD Ryzen 9 7900",
+    "system_ram_gb": 64,
+    "usable_system_ram_gib": 60.96,
+    "os": "Ubuntu 26.04",
+    "driver": "595.91.07",
+    "cuda_compiler": "13.2.86",
+    "cuda_architecture": "SM120"
+  },
+  "model": {
+    "repository": "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF",
+    "revision": "ed59f92082b1e93c0e96d60a8b11aab089b52f09",
+    "quantization": "IQ3_XXS",
+    "complete_expert_set": true
+  },
+  "workload": {
+    "name": "legacy-fr-code",
+    "language": "French",
+    "synthetic": true,
+    "decode_runs": 3,
+    "output_tokens_each": 768,
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "top_k": 20,
+    "min_p": 0,
+    "seed": 42,
+    "thinking": false,
+    "metric": "client-observed stream decode tokens per second",
+    "raw_harness_published": false
+  },
+  "strata_config": {
+    "gpu_indices": [
+      0,
+      1
+    ],
+    "layer_split": "auto",
+    "observed_layers_per_gpu": [
+      21,
+      27
+    ],
+    "parallel": 1,
+    "context_tokens": 131072,
+    "kv": "int8",
+    "kv_resident_tokens": 32768,
+    "draft_tokens": 4,
+    "draft_min_probability": 0.5,
+    "draft_vocab": "fr",
+    "prefix_checkpoints": 0,
+    "expert_cache": "auto",
+    "prefill": "auto",
+    "vram_reserve_mib_per_gpu": 1024,
+    "remote_expert_optimization": true,
+    "experimental_speed_projection": false,
+    "vision": "gpu",
+    "vision_max_tokens": 1024
+  },
+  "comparisons": [
+    {
+      "backend": "Upstream Strata / Flash Next IQ3_XXS",
+      "decode": {
+        "decode_median": 130.9165029014978,
+        "decode_min": 129.61330122197,
+        "decode_max": 133.59357047282373,
+        "speed_count": 3
+      },
+      "uncached_prefill": [
+        {
+          "prompt_tokens": 32030,
+          "cached_tokens": 0,
+          "time_to_first_token_seconds": 9.179219609941356,
+          "retrieval_passed": true
+        },
+        {
+          "prompt_tokens": 120029,
+          "cached_tokens": 0,
+          "time_to_first_token_seconds": 30.491291112964973,
+          "retrieval_passed": true
+        }
+      ]
+    },
+    {
+      "backend": "llama.cpp / Flash Next IQ3_XXS",
+      "decode": {
+        "decode_median": 29.581402596347356,
+        "decode_min": 29.263031619983554,
+        "decode_max": 31.95107358343418,
+        "speed_count": 3
+      },
+      "uncached_prefill": [
+        {
+          "prompt_tokens": 32030,
+          "cached_tokens": 0,
+          "time_to_first_token_seconds": 58.04811619198881,
+          "retrieval_passed": true
+        },
+        {
+          "prompt_tokens": 120029,
+          "cached_tokens": 0,
+          "time_to_first_token_seconds": 234.1422482789494,
+          "retrieval_passed": true
+        }
+      ]
+    },
+    {
+      "backend": "llama.cpp / Qwen3.8 27B Turbo",
+      "decode": {
+        "decode_median": 115.33386322573652,
+        "decode_min": 111.91672600068215,
+        "decode_max": 120.95249916535668,
+        "speed_count": 3
+      },
+      "uncached_prefill": [
+        {
+          "prompt_tokens": 32030,
+          "cached_tokens": 0,
+          "time_to_first_token_seconds": 22.918592786998488,
+          "retrieval_passed": true
+        },
+        {
+          "prompt_tokens": 120029,
+          "cached_tokens": 0,
+          "time_to_first_token_seconds": 105.56529222801328,
+          "retrieval_passed": true
+        }
+      ]
+    }
+  ],
+  "memory": {
+    "scope": "upstream Strata uncached 120K request; GPU usage includes the desktop",
+    "gpu_used_mib": [
+      15175.0,
+      15182.0
+    ],
+    "process_rss_peak_gib": 46.32085418701172,
+    "system_ram_min_available_gib": 9.835128784179688
+  },
+  "functional_observations": {
+    "generated_code_cases_passed": 6,
+    "synthetic_image_ocr_and_shapes_passed": true,
+    "two_tool_calls_passed": true,
+    "streaming_passed": true,
+    "long_context_retrieval_markers": 3,
+    "general_agent_quality_evaluated": false
+  },
+  "cached_continuation": {
+    "prefix_checkpoints": 6,
+    "prompt_tokens": 120029,
+    "cached_tokens": 120022,
+    "time_to_first_token_seconds": 0.24094392999541014,
+    "comparable_to_uncached_prefill": false
+  },
+  "limitations": [
+    "One machine; no single-GPU control or confidence interval.",
+    "Turbo is a different model, not an engine-only comparison.",
+    "llama.cpp Flash Next used microbatch 512 without MTP; Strata used MTP.",
+    "Legacy measurements are derived summaries; private raw logs and the legacy harness are not published.",
+    "The new kervia-english-code-v1 workload needs its own baseline.",
+    "No optimization gain from this fork is claimed."
+  ]
+}

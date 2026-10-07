@@ -1,0 +1,25 @@
+name: Feature or optimization proposal
+description: Propose a focused improvement.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Workload and problem
+      description: Explain the user-visible limitation and affected two-GPU configuration.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal and alternatives
+      description: Include relevant upstream capabilities and links. Distinguish a hypothesis from a measured improvement.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Validation and acceptance criteria
+      description: How should we measure success while retaining correctness, memory headroom, native vision, tools and context?
+    validations:
+      required: true

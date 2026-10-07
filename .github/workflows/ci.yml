@@ -1,0 +1,40 @@
+name: CPU checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cpu-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cpu:
+    name: CPU checks (${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Fork helper regression tests
+        run: python -m unittest discover -s tests/kervia -p 'test_*.py' -v
+      - name: Upstream setup regression tests
+        run: >-
+          python -m unittest tools.test_setup_config tools.test_setup_configs
+          tools.test_setup_parallel tools.test_setup_remote_opt tools.test_setup_golden
+      - name: Compile helper modules
+        run: python -m py_compile tools/kervia_profile.py tools/kervia_bench.py

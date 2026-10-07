@@ -1,0 +1,32 @@
+name: Performance measurement
+description: Share a reproducible two-NVIDIA result or regression.
+labels: [performance, dual-nvidia, benchmark]
+body:
+  - type: textarea
+    id: environment
+    attributes:
+      label: Hardware and exact revisions
+      description: Both GPU models, VRAM per GPU, system RAM, CPU, PCIe topology, driver, toolkit, upstream/fork SHAs and model revision.
+    validations:
+      required: true
+  - type: textarea
+    id: method
+    attributes:
+      label: Workload and settings
+      description: Public synthetic workload, reproduction commands, output length, context, draft vocabulary, GPU order/split, concurrency and prefix cache policy.
+    validations:
+      required: true
+  - type: textarea
+    id: results
+    attributes:
+      label: All runs and resource use
+      description: Baseline and candidate runs, median decode, TTFT, VRAM per GPU, process RSS, available RAM and any failures. Separate startup, uncached prefill and cached continuation.
+    validations:
+      required: true
+  - type: textarea
+    id: correctness
+    attributes:
+      label: Correctness and limitations
+      description: Text/code behavior, streaming, tool calls, native image input and long-context checks. State what was not tested. Publish only sanitized summaries.
+    validations:
+      required: true

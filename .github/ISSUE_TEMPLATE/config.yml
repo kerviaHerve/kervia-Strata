@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Private security report
+    url: https://github.com/kerviaHerve/kervia-Strata/security/advisories/new
+    about: Report vulnerabilities privately. Do not disclose them in a public issue.
+  - name: Upstream Strata documentation
+    url: https://github.com/Niko1221/Strata
+    about: Original project, supported platforms and general documentation.

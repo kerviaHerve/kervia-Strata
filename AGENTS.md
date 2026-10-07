@@ -21,3 +21,13 @@ offers the same steps as tools.
   `tools/test_setup_amd.py`, `tools/test_setup_choices.py`).
 - Keep the docs' style: plain words, measured numbers with what they were measured on, no claims without a
   measurement.
+
+## kervia-Strata fork conventions
+
+- Read `UPSTREAM.md`, `CONTRIBUTING.md` and `docs/kervia/ROADMAP.md` before fork-specific changes.
+- Write new fork documentation, issues and PRs in English. Preserve upstream credit, licenses and history.
+- The initial reference platform is two RTX 5070 Ti 16 GB cards, with separate system RAM. Do not conflate VRAM with system RAM.
+- Keep production installations separate from this development checkout. A repository task does not authorize restarting a model service, replacing its config, downloading weights or occupying its GPUs.
+- Start with the CPU checks in `CONTRIBUTING.md`. They do not validate CUDA builds, GPU execution or performance.
+- Benchmark claims require identical public synthetic workloads and exact baseline/candidate revisions. Label the historical upstream baseline honestly; do not attribute it to fork optimizations.
+- Keep generated configs, credentials, private logs, prompts and model weights out of Git. Review sanitized summaries before publishing.

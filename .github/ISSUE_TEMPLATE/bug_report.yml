@@ -1,0 +1,28 @@
+name: Bug report
+description: Report a reproducible problem in this fork.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Use English and synthetic examples. Remove keys, private prompts, addresses and local paths from diagnostics.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Expected and observed behavior
+      description: Include exact reproduction steps and a minimal synthetic input.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Build and hardware
+      description: Fork commit, OS, driver, CUDA, model revision, GPU models and VRAM per card, system RAM, selected GPU order and PCIe topology.
+    validations:
+      required: true
+  - type: textarea
+    id: settings
+    attributes:
+      label: Relevant settings and sanitized errors
+      description: Context, KV type, layer split, cache, draft vocabulary, parallelism, and whether upstream has the same problem. Do not paste a whole local config.
+    validations:
+      required: true

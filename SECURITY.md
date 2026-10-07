@@ -2,17 +2,13 @@
 
 ## Reporting a vulnerability
 
-Please report anything that should not be public until it is fixed **privately**, through GitHub's private
-vulnerability reporting: the repository's **Security** tab, **Report a vulnerability**
-([direct link](https://github.com/Niko1221/Strata/security/advisories/new)). Say what you found, how to reproduce it
-(the request, the config keys involved, the Strata version), and what an attacker gains. We answer there, fix it in
-a release, and credit you in the advisory unless you ask us not to.
+Report vulnerabilities privately through [this fork's security advisory form](https://github.com/kerviaHerve/kervia-Strata/security/advisories/new). Include a synthetic reproduction, affected commit, configuration keys and impact. Remove credentials and personal data. Do not publish an exploit in a public issue before a fix is available.
 
-Ordinary hardening ideas and findings that are safe to discuss in public are welcome as an
-[issue](https://github.com/Niko1221/Strata/issues) (#544 collects audit findings) or as a pull request, which we
-review like our own code.
+If the issue also affects unmodified upstream Strata, its [private reporting form](https://github.com/Niko1221/Strata/security/advisories/new) is available for coordinated fixes. State which repository and commit you tested.
 
-Supported: the latest release. Fixes go into the next release, not into older ones.
+This fork is experimental. Fixes target the current `main`; no fork release or support timeline is promised yet. Public hardening proposals belong in [this fork's issues](https://github.com/kerviaHerve/kervia-Strata/issues). Neither this fork nor the upstream server claims an independent security audit.
+
+The server behavior below is inherited from upstream at the initial fork revision.
 
 ## What the server exposes
 
