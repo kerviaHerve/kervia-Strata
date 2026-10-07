@@ -1,0 +1,11 @@
+{
+  "workload": "kervia-multilingual-code-holdout-v1",
+  "purpose": "Independent final confirmation; never used to rank the screening variants.",
+  "output_tokens": 768,
+  "repetitions": 3,
+  "prompts": [
+    "Write a detailed 1200-word tutorial in English about a streaming JSON Lines validator in Python. Include code, Unicode handling, recovery from malformed records, and behavioral tests. Explain the tradeoffs without using third-party packages.",
+    "Rédige un tutoriel détaillé de 1200 mots en français sur une pagination stable en Python. Donne du code, traite les valeurs identiques et les insertions entre deux pages, puis écris des tests de comportement. Utilise uniquement la bibliothèque standard.",
+    "Write a detailed 1200-word tutorial in English about cancellation and deadlines in an asynchronous Python job runner. Include complete code, cleanup on cancellation, error propagation, and behavioral tests. Explain the edge cases."
+  ]
+}

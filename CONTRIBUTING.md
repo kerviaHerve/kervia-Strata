@@ -18,7 +18,8 @@ These checks require Python 3.11 or 3.12 and the standard library. They do not d
 python3 -m unittest discover -s tests/kervia -p 'test_*.py' -v
 python3 -m unittest tools.test_setup_config tools.test_setup_configs \
   tools.test_setup_parallel tools.test_setup_remote_opt tools.test_setup_golden
-python3 -m py_compile tools/kervia_profile.py tools/kervia_bench.py
+python3 -m py_compile tools/kervia_profile.py tools/kervia_bench.py \
+  tools/kervia_metrics.py tools/kervia_validate.py tools/kervia_lifecycle.py
 ```
 
 Run additional relevant upstream tests when changing their code. CI is deliberately a CPU check, not a CUDA build or performance certification. Do not run untrusted pull requests on a production machine or expose credentials to a self-hosted GPU runner.

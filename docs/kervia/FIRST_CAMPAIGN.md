@@ -22,6 +22,10 @@ First run two independent automatic-placement sessions (A/A). Next compare expli
 
 Capture client TTFT/decode/total time, output and input token counts, engine prefill/decode/draft counts, expert-routing denominators and observed cache slots. Sample both GPUs' memory/utilization/power/temperature, process RSS, available host RAM, and cgroup memory/OOM counters. Peak measurements are **sampled**, not allocation-exact. Startup, warmup, decode, validation and long-context phases are labelled separately.
 
+Final confirmation additionally uses `bench/fixtures/kervia/holdout-v1.json`: three new English/French coding prompts, three repetitions each, with the same output limit and sampling. This fixture was defined before choosing the final K=27/K=29/pipeline candidate and is excluded from screening selection. Cancellation and cached continuation are checked with `tools/kervia_lifecycle.py`; cached tests use a separately labelled six-checkpoint configuration. A closed streaming response must permit a successful follow-up within a predeclared 30-second bound, and checkpoint restoration must reuse at least 90% of the repeated input while retaining retrieval and sustained generation.
+
+The profile generator now accepts an explicit layer boundary from 2 through 47, either in a profile or through `--layer-split`. Its default remains `auto`. It rejects inherited trim/pipeline experiments so generating a reference from an already modified config cannot silently preserve them. Use the untouched prepared config as the source.
+
 All screened configurations receive functional checks and uncached long prompts when they load successfully. Repeated baseline/finalist sessions establish confirmation; a single screening session cannot establish a repeatable winner. No useful p95 is claimed from three repetitions. Failed configurations and retries remain recorded. A final comparison must retain 131,072 total context, native vision, tool calls and memory headroom; no alternative is promoted when correctness or uncertainty prevents a decision.
 
 ## Reproduction
@@ -39,7 +43,7 @@ The local supervisor records exact commands, protected config hashes, binary has
 
 ## Results and decision
 
-Pending the measured runs. No performance gain or default-profile change is established by this preparation commit.
+The initial screening completed with all functional and long-context gates passing. The K=25 trimmed candidate was at the edge of the predeclared split range and led both aggregate decode and long-context TTFT in that screening. Two neighboring boundaries, K=27 and K=29, were therefore added before selecting the candidate for confirmation; this remains within the original maximum of 12 distinct configurations. This adaptive extension is recorded before those two runs. Screening results alone do not select a default.
 
 ## Validation and rollback
 
