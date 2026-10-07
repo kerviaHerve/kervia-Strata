@@ -75,6 +75,19 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(apply_profile(self.config, profile, [0, 1], layer_split='auto')['layer_split'], 'auto')
         self.assertEqual(apply_profile(self.config, self.profile, [0, 1])['layer_split'], 'auto')
 
+    def test_measured_profile_retains_context_assets_and_cache_modes(self):
+        profile = json.loads((ROOT / 'configs/dual-nvidia-5070ti-128k-measured.json').read_text())
+        for benchmark, checkpoints in ((False, '6'), (True, '0')):
+            result = apply_profile(self.config, profile, [0, 1], benchmark)
+            self.assertEqual(result['layer_split'], '25')
+            self.assertEqual(self.value(result, '--pipeline-windows'), '2')
+            self.assertEqual(result['args'].count('--trim-stage-weights'), 1)
+            self.assertEqual(self.value(result, '--max-context'), '131072')
+            self.assertEqual(self.value(result, '--prompt-cache'), checkpoints)
+            self.assertEqual(result['vision'], self.config['vision'])
+            self.assertEqual(result['tokenizer'], self.config['tokenizer'])
+            self.assertEqual(result['draft_vocab'], 'fr')
+
     def test_rejects_invalid_reference_boundaries(self):
         for split in (True, None, 0, 1, 48, '2,20', '1.5', '-1', '２３'):
             with self.subTest(split=split), self.assertRaises(ValueError):

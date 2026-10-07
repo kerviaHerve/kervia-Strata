@@ -2,6 +2,8 @@
 
 Date: 2026-10-07. Status: source inspection and analysis of historical measurements; **no new GPU experiment and no validated fork speedup**.
 
+This is the initial study's historical state. The subsequent [first campaign](FIRST_CAMPAIGN.md) records the actual configuration experiments, measured results and remaining limitations.
+
 Inspected fork baseline: `3c10ad41fd6b8cc56cce463244f79727b35846be`. Engine baseline: upstream `82f46a8c8f475f001ad76d92f58f4a4f8ffb0253` (`v0.1.40.1`). GitHub's upstream `main` resolved to that same engine revision during this study. `git diff` confirmed that `src/`, `include/`, `serve/`, `CMakeLists.txt` and `tools/make_profile.py` were unchanged between those revisions.
 
 The objective remains a faster single coding agent on two RTX 5070 Ti 16 GB cards, with the complete IQ3_XXS expert set, native images, reliable tools and 131,072 tokens of total context. Every proposed experiment below has an observable input change and a result to measure. **No expected gain, extrapolated percentage or assumed bottleneck is used to select a winner.**

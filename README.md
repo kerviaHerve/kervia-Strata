@@ -9,7 +9,7 @@ Strata's engine, multi-GPU support, OpenAI-compatible server, vision and tool ca
 
 ## Status and scope
 
-The initial fork adds a reproducible two-GPU configuration profile, a synthetic benchmark client, CPU regression checks and a development roadmap. **It does not yet change CUDA kernels or claim a speed improvement over upstream.**
+The fork adds two-GPU profiles, repeatable synthetic benchmarks, functional checks and documented measurements. The [first campaign](docs/kervia/FIRST_CAMPAIGN.md) identifies a faster opt-in configuration on the reference machine using **existing upstream options and the same upstream binary**. No CUDA kernel or engine change is claimed.
 
 Our priorities are low latency for coding agents, efficient use of both cards, stable **131,072-token context**, native image input and reliable tool calls. Linux with two NVIDIA cards is the initial validation target. Existing upstream platforms remain in the source tree; they are not all validated by this fork's CI.
 
@@ -56,7 +56,19 @@ python3 tools/kervia_profile.py --config strata-iq3_xxs.json \
 
 The API base URL is `http://127.0.0.1:8080/v1`, and the profile's model name is `kervia-strata`. The context limit includes input and generated output. Configure authentication before permitting remote access; see [Security](SECURITY.md).
 
+For the measured x8-first/x4-second reference topology, the optional profile uses a 25/23 layer split, stage-weight trimming and two pipeline windows:
+
+```bash
+python3 tools/kervia_profile.py --config strata-iq3_xxs.json \
+  --profile configs/dual-nvidia-5070ti-128k-measured.json \
+  --gpus 0,1 --draft-vocab fr --output strata-measured.local.json
+```
+
+This creates a separate config; it does not switch a running service. Read the [conditions, results and rollback](docs/kervia/FIRST_CAMPAIGN.md) before selecting it. Automatic placement remains the generator's default. Re-measure for a different GPU order, available VRAM or workload.
+
 ## Measurements
+
+The first campaign's final paired confirmation measured **22–26% higher per-prompt median decode rates** on three coding prompts and **14–27%** on three additional English/French prompts. Uncached first-token latency at 119,979 input tokens changed from **30.81 s to 24.48 s**. Each prompt had three 768-token outputs. These results compare configurations on one shared workstation; a resident embedding service occupied about 2 GB on GPU 0, and complete activity isolation was not established. See [all trials and limitations](docs/kervia/FIRST_CAMPAIGN.md). They must not be compared directly with the different historical workload below.
 
 Historical measurements on the reference machine, **before any fork changes**, used three 768-token outputs and uncached synthetic French prompts:
 

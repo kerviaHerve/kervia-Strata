@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "name": "Two RTX 5070 Ti 16 GB, IQ3_XXS, 128K, measured single-client profile",
+  "gpu_count": 2,
+  "reference_system_ram_gib": 64,
+  "reference_model": "ISTA-DASLab/Qwen3.8-Flash-Next-GSQ-RCO-GGUF IQ3_XXS",
+  "reference_gpu_stage_order": ["PCIe 5.0 x8", "PCIe 5.0 x4"],
+  "reference_draft_vocab": "fr",
+  "measurement_record": "docs/kervia/FIRST_CAMPAIGN.md",
+  "layer_split": "25",
+  "conversation_checkpoints": 6,
+  "engine_options": {
+    "--max-context": "131072",
+    "--kv": "int8",
+    "--kv-resident": "32768",
+    "--expert-cache": "auto",
+    "--prefill": "auto",
+    "--spec": "4",
+    "--spec-min-p": "0.5",
+    "--vram-reserve-mib": "1024",
+    "--vram-reserve-later-mib": "1024",
+    "--remote-expert-opt": null,
+    "--trim-stage-weights": null,
+    "--pipeline-windows": "2"
+  }
+}
