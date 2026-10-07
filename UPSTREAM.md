@@ -4,7 +4,25 @@
 - Fork: [kerviaHerve/kervia-Strata](https://github.com/kerviaHerve/kervia-Strata).
 - Initial upstream revision: `82f46a8c8f475f001ad76d92f58f4a4f8ffb0253` (`v0.1.40.1`).
 - Fork established: 2026-10-07, with GitHub's fork relationship and full Git history.
-- Initial fork changes: English project documentation, a two-NVIDIA profile generator, a synthetic benchmark client, tests and repository configuration. The engine and server are unchanged.
+- Initial fork changes: English project documentation, a two-NVIDIA profile generator, a synthetic benchmark client, tests and repository configuration. Engine and server were unchanged at bootstrap.
+
+## Engine experiment imports
+
+The [engine campaign](docs/kervia/ENGINE_CAMPAIGN.md) builds on that initial engine
+with these attributed, `cherry-pick -x` imports. These are selected PR heads, not
+an assertion that upstream merged or endorsed them:
+
+| Upstream source | Imported commit | Purpose |
+|---|---|---|
+| [PR1107](https://github.com/Niko1221/Strata/pull/1107) | `8e216160d79ea290464310563197b0571244e5bc` | Group expert gathers for short prefills |
+| [PR1316](https://github.com/Niko1221/Strata/pull/1316) | `8e0a7b36ec2a427f879b218b354cde2fdf4487a2` | Retry stale lookup-window costs |
+| [PR1163](https://github.com/Niko1221/Strata/pull/1163) | `ed63fa81c2d5919d8a4c4629e1345feabe295463` | Bound spare capacity in growing conversation buffers |
+| [PR1164](https://github.com/Niko1221/Strata/pull/1164) | `2a30c0456979c246aee9f8f7c5786dc6b524ddc2` | Borrow checkpoints while keeping the parked conversation |
+
+The fork adds opt-in experiment gates, a measured-cost pipeline launch heuristic,
+all-stage prefix validation/restoration for layer splits, CPU/GPU checks and
+replay/reporting tools. Original authors and coauthor trailers remain in history.
+The Python server and distributed production binaries are not replaced by this PR.
 
 ## Attribution and distribution
 

@@ -193,6 +193,37 @@ void full_session(int fmt, int mode, int experts) {
           restored.live.dead==a.live.dead && restored.live.block_pos==a.live.block_pos &&
           equal(restored.kv[0],a.kv[0]) && equal(restored.kv[1],a.kv[1]),"whole-session A/B/A exactness including spare key");
     check(ss.ple_prev[0]==64 && ss.ple_prev[1]==65,"PLE token window reconstructed");
+    {
+        // a borrowed prefix (ConversationCache::borrows): the K/V of A's first tokens and A's checkpoint there, A
+        // untouched - the same bytes as restoring A whole and rewinding to that checkpoint
+        const int64_t at = (int64_t) a.checkpoints[0].ids.size();
+        check(conversation_snapshot_restore(a,ss,g,draft.state,err)==ConversationRestore::restored,"restore A whole");
+        check(conversation_checkpoint_restore(a.checkpoints[0],ss,g,err),"rewind it to its checkpoint");
+        ConversationKv want_main,want_draft,got_main,got_draft;
+        ConversationCheckpoint want_state,got_state;
+        want_state.ids=got_state.ids=a.checkpoints[0].ids;
+        check(conversation_kv_save(want_main,main.state,g,at,true,err) &&
+              conversation_kv_save(want_draft,draft.state,g,at,false,err) &&
+              conversation_checkpoint_save(want_state,ss,g,err),"capture the rewound prefix");
+        fill(201);   // another conversation in the session
+        const SavedConversation untouched=a;
+        check(conversation_snapshot_restore_prefix(a,(int64_t)a.live.ids.size()+1,ss,g,draft.state,err)==
+                  ConversationRestore::invalid &&
+              conversation_snapshot_restore_prefix(a,0,ss,g,draft.state,err)==ConversationRestore::invalid,
+              "a prefix outside the image is refused");
+        check(conversation_snapshot_restore_prefix(a,at,ss,g,draft.state,err)==ConversationRestore::restored,
+              "restore A's prefix only");
+        check(conversation_checkpoint_restore(a.checkpoints[0],ss,g,err),"mount the checkpoint over it");
+        check(conversation_kv_save(got_main,main.state,g,at,true,err) &&
+              conversation_kv_save(got_draft,draft.state,g,at,false,err) &&
+              conversation_checkpoint_save(got_state,ss,g,err),"capture the borrowed prefix");
+        check(equal(got_main,want_main) && equal(got_draft,want_draft),
+              "borrowed K/V equals the whole restore's prefix");
+        check(got_state.gdn==want_state.gdn && got_state.ple==want_state.ple && got_state.tails==want_state.tails &&
+              got_state.dead==want_state.dead && got_state.block_pos==want_state.block_pos,"the same running state");
+        check(untouched.live.ids==a.live.ids && equal(untouched.kv[0],a.kv[0]) && equal(untouched.kv[1],a.kv[1]),
+              "the parked image is unchanged");
+    }
     for (int64_t dirty : {65, 3, 0}) {
         check(conversation_snapshot_restore(a,ss,g,draft.state,err)==ConversationRestore::restored,"restore growth fixture base");
         ConversationKvReuse reuse{a.kv,65,dirty};
@@ -259,6 +290,23 @@ void full_session(int fmt, int mode, int experts) {
         split_image.stage_images.push_back(stage);
         check(!conversation_snapshot_validate(split_image,ss,g,draft.state,err),
               "a layer split's image is refused by the whole-session form");
+        const auto original_split = split_image;
+        check(conversation_snapshot_restore_prefix(split_image, 3, ss, g, (const QsaState*)nullptr, err) ==
+              ConversationRestore::restored, "stage-local prefix API restores stage zero of a split image");
+        ConversationKv stage_prefix;
+        check(conversation_kv_save(stage_prefix, main.state, g, 3, true, err), "capture restored stage prefix");
+        bool same_prefix = true;
+        stage_prefix.k.visit(0, stage_prefix.k.size(), [&](const uint8_t* data, size_t bytes, size_t offset) {
+            std::vector<uint8_t> expected(bytes);
+            if (!original_split.kv[0].k.read(expected.data(), offset, bytes) ||
+                !std::equal(expected.begin(), expected.end(), data)) same_prefix = false;
+            return true;
+        });
+        check(same_prefix && equal(original_split.kv[0], split_image.kv[0]) &&
+              equal(original_split.stage_images[0].kv[0], split_image.stage_images[0].kv[0]),
+              "stage prefix is exact and both donor stage images stay unchanged");
+        check(conversation_snapshot_restore_prefix(split_image, 3, ss, g, draft.state, err) ==
+              ConversationRestore::invalid, "single-session prefix API still rejects split image");
         ConversationKvReuse wrong{a.kv,65,65,{}};
         check(!conversation_snapshot_capture_bytes(wrong,view,ss,g,nullptr,peak,err),"a draft image's K/V is not a stage's reuse");
     }

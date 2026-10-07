@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -40,3 +39,9 @@ jobs:
         run: >-
           python -m py_compile tools/kervia_profile.py tools/kervia_bench.py
           tools/kervia_metrics.py tools/kervia_validate.py tools/kervia_lifecycle.py
+          tools/kervia_engine_bench.py tools/kervia_engine_report.py
+      - name: Engine policy and conversation CPU checks
+        run: |
+          cmake -S . -B build-cpu -DSTRATA_ENABLE_CUDA=OFF -DSTRATA_BUILD_TESTS=OFF -DSTRATA_BUILD_CONVERSATION_TESTS=ON
+          cmake --build build-cpu --parallel 2 --target conversation_prefix_test pipeline_policy_test conversation_cache_test conversation_split_failure_test conversation_memory_test conversation_file_test draft_policy_test
+          ctest --test-dir build-cpu --output-on-failure -R '^(conversation_prefix_test|pipeline_policy_test|conversation_cache_test|conversation_split_failure_test|conversation_memory_test|conversation_file_test|draft_policy_test)$'
